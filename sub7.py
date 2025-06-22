@@ -837,3 +837,74 @@ if __name__ == "__main__":
         print(Fore.RED + "\n[!] تم إيقاف الفحص بواسطة المستخدم.")
     except Exception as e:
         print(Fore.RED + f"\n[!] حدث خطأ: {str(e)}")
+
+
+# استخراج نماذج الصفحة
+def extract_input_forms(url):
+    print(Fore.CYAN + "\n[*] بدء استخراج نماذج الصفحة...")
+    
+    forms_found = 0
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        forms = soup.find_all('form')
+        
+        if not forms:
+            print(Fore.YELLOW + "[!] لم يتم العثور على نماذج إدخال في الصفحة.")
+            return 0
+        
+        for i, form in enumerate(forms, 1):
+            print(Fore.GREEN + f"\n[+] النموذج #{i}:")
+            
+            # استخراج معلومات النموذج
+            form_action = form.get('action', 'غير محدد')
+            if form_action and not form_action.startswith('http') and not form_action == 'غير محدد':
+                if form_action.startswith('/'):
+                    form_action = url + form_action[1:]
+                else:
+                    form_action = url + '/' + form_action
+            
+            form_method = form.get('method', 'get').upper()
+            form_id = form.get('id', 'غير محدد')
+            form_name = form.get('name', 'غير محدد')
+            
+            print(Fore.CYAN + f"    الوجهة (Action): {form_action}")
+            print(Fore.CYAN + f"    الطريقة (Method): {form_method}")
+            print(Fore.CYAN + f"    المعرف (ID): {form_id}")
+            print(Fore.CYAN + f"    الاسم (Name): {form_name}")
+            
+            # استخراج حقول الإدخال
+            inputs = form.find_all(['input', 'textarea', 'select'])
+            if inputs:
+                print(Fore.CYAN + "    حقول الإدخال:")
+                for input_field in inputs:
+                    field_type = input_field.name
+                    field_name = input_field.get('name', 'غير محدد')
+                    field_id = input_field.get('id', 'غير محدد')
+                    
+                    if field_type == 'input':
+                        input_type = input_field.get('type', 'text')
+                        print(Fore.YELLOW + f"      - النوع: {field_type} ({input_type}), الاسم: {field_name}, المعرف: {field_id}")
+                    else:
+                        print(Fore.YELLOW + f"      - النوع: {field_type}, الاسم: {field_name}, المعرف: {field_id}")
+            
+            # استخراج أزرار الإرسال
+            buttons = form.find_all(['button', 'input'])
+            submit_buttons = [b for b in buttons if (b.name == 'button' and b.get('type', '') in ['submit', '']) or 
+                              (b.name == 'input' and b.get('type', '') == 'submit')]
+            
+            if submit_buttons:
+                print(Fore.CYAN + "    أزرار الإرسال:")
+                for button in submit_buttons:
+                    button_name = button.get('name', 'غير محدد')
+                    button_value = button.get('value', 'غير محدد')
+                    print(Fore.YELLOW + f"      - الاسم: {button_name}, القيمة: {button_value}")
+            
+            forms_found += 1
+        
+        print(Fore.CYAN + f"\n[*] تم العثور على {forms_found} نموذج إدخال.")
+        return forms_found
+    
+    except Exception as e:
+        print(Fore.RED + f"[!] خطأ أثناء استخراج نماذج الإدخال: {str(e)}")
+        return 0
